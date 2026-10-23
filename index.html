@@ -988,5 +988,232 @@ body.started #sectionNav.app-nav{position:fixed!important;inset:0 auto 0 0!impor
 @media(prefers-reduced-motion:reduce){body.started .viewport:after,body.started #appShell:before{animation:none!important}}
 @media print{body.started #appShell{overflow:visible!important}body.started #sectionNav.app-nav{position:static!important;height:auto!important}}
 </style>
+
+<!-- Capa de calidad Forma3D: autoguardado local, validación y feedback accesible -->
+<style id="forma3d-quality-layer">
+#forma3dToast{position:fixed;right:18px;bottom:18px;z-index:99999;max-width:min(420px,calc(100vw - 36px));padding:12px 16px;border-radius:12px;background:#202631;color:#fff;box-shadow:0 12px 34px #0002;font-size:13px;line-height:1.45;opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+#forma3dToast.show{opacity:1;transform:translateY(0)}
+#forma3dToast[data-kind="error"]{background:#8f2d2d}#forma3dToast[data-kind="success"]{background:#176849}
+.forma3d-field-error{outline:2px solid #c0392b!important;outline-offset:1px}
+@media(prefers-reduced-motion:reduce){#forma3dToast{transition:none}}
+</style>
+<script id="forma3d-quality-layer-script">
+(()=>{
+ const $=id=>document.getElementById(id);
+ const KEY='forma3d_autosave_design_v1';
+ const fields=['type','w','h','d','thickness','back','shelves','material','edge','screwType','screwDia','screwLen','pilot','facePilot','drillDepth','screwPerJoint','endOffset','edgeOffset','holesPerEdge','title'];
+ let toastTimer;
+ function toast(message,kind='success'){
+   let node=$('forma3dToast');
+   if(!node){node=document.createElement('div');node.id='forma3dToast';node.setAttribute('role','status');node.setAttribute('aria-live','polite');document.body.appendChild(node)}
+   node.dataset.kind=kind;node.textContent=message;node.classList.add('show');
+   clearTimeout(toastTimer);toastTimer=setTimeout(()=>node.classList.remove('show'),3200);
+ }
+ function readSaved(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
+ function snapshot(){const data={version:1,savedAt:new Date().toISOString(),values:{}};fields.forEach(id=>{const el=$(id);if(el)data.values[id]=el.value});return data}
+ function save(){try{localStorage.setItem(KEY,JSON.stringify(snapshot()));return true}catch(e){return false}}
+ let saveTimer;
+ function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{if(save())toast('Diseño guardado automáticamente en este navegador.');},500)}
+ function restore(){
+   const data=readSaved();if(!data||!data.values)return;
+   let changed=false;
+   fields.forEach(id=>{const el=$(id);if(el&&Object.prototype.hasOwnProperty.call(data.values,id)){el.value=data.values[id];changed=true}});
+   if(changed){fields.forEach(id=>{const el=$(id);if(el){el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))}});toast('Se restauró tu último diseño guardado.')}
+ }
+ function validateDimensions(){
+   const ids=['w','h','d'],els=ids.map($),vals=els.map(el=>Number(el?.value));
+   els.forEach(el=>el?.classList.remove('forma3d-field-error'));
+   if(vals.some(v=>!Number.isFinite(v)||v<=0)){
+     const bad=els.find(el=>!Number.isFinite(Number(el?.value))||Number(el?.value)<=0);
+     bad?.classList.add('forma3d-field-error');bad?.focus();toast('Revisa las medidas: ancho, alto y profundidad deben ser mayores que cero.','error');return false;
+   }
+   const t=Number($('thickness')?.value)||0;
+   if(t>0&&t>=Math.min(...vals)){ $('thickness')?.classList.add('forma3d-field-error');toast('El espesor del tablero debe ser menor que las dimensiones del mueble.','error');return false}
+   return true;
+ }
+ document.addEventListener('DOMContentLoaded',()=>{
+   restore();
+   fields.forEach(id=>{const el=$(id);if(el){el.addEventListener('input',queueSave);el.addEventListener('change',queueSave)}});
+   ['w','h','d','thickness'].forEach(id=>$(id)?.addEventListener('change',validateDimensions));
+   const saveBtn=$('saveProject');
+   saveBtn?.addEventListener('click',()=>{if(validateDimensions()&&save())toast('Configuración guardada correctamente.');});
+   const reset=$('reset');
+   reset?.addEventListener('click',()=>{try{localStorage.removeItem(KEY)}catch(e){};toast('Diseño restablecido. El autoguardado anterior se eliminó.')},true);
+   const json=$('exportJson');
+   json?.addEventListener('click',()=>{if(!validateDimensions())return;});
+   const form=$('customerForm');
+   form?.addEventListener('submit',e=>{const required=['clientName','clientPhone','clientFurniture','clientWidth','clientHeight','clientDepth'];const missing=required.map($).find(el=>el&&!String(el.value||'').trim());if(missing){e.preventDefault();missing.focus();toast('Completa los datos obligatorios antes de preparar la solicitud.','error')}});
+ });
+})();
+</script>
+
+<style id="forma3d-navigation-emergency-fix">
+#sectionNav.app-nav{z-index:5000!important;pointer-events:auto!important}
+#sectionNav.app-nav button,#sectionNav.app-nav .mode-switch{position:relative;z-index:5001;pointer-events:auto!important}
+.forma-topbar,.forma-topbar button{position:relative;z-index:5002}
+#sectionNav .mode-switch button{width:100%;min-height:42px;touch-action:manipulation}
+</style>
+<script id="forma3d-navigation-emergency-fix-script">
+(()=>{
+ const $=id=>document.getElementById(id);
+ function go(mode,section){
+   try{
+     if(typeof window.setMode==='function')window.setMode(mode);
+     if(typeof window.goSection==='function')window.goSection(section);
+     document.body.dataset.mode=mode;
+     const client=mode==='client';
+     const cm=$('clientMode'),wm=$('workshopMode');
+     if(cm){cm.classList.toggle('active',client);cm.setAttribute('aria-pressed',String(client))}
+     if(wm){wm.classList.toggle('active',!client);wm.setAttribute('aria-pressed',String(!client))}
+     const sm=$('sessionMode'),ss=$('sidebarSessionMode');
+     const label=client?'🪑 Modo cliente':'🛠️ Modo taller';
+     if(sm)sm.textContent=label;if(ss)ss.textContent=label;
+   }catch(err){console.error('Forma3D navegación:',err);alert('No se pudo abrir la sección. Recarga la página e inténtalo nuevamente.')}
+ }
+ document.addEventListener('click',e=>{
+   const el=e.target instanceof Element?e.target.closest('button,[data-option-go]'):null;
+   if(!el)return;
+   if(el.id==='goHome'){e.preventDefault();e.stopImmediatePropagation();if(typeof window.goSection==='function')window.goSection('inicio');return}
+   if(el.id==='clientMode'){e.preventDefault();e.stopImmediatePropagation();go('client','solicitud');return}
+   if(el.id==='workshopMode'){e.preventDefault();e.stopImmediatePropagation();go('workshop','diseno');return}
+   if(el.dataset.go){
+     e.preventDefault();e.stopImmediatePropagation();
+     const s=el.dataset.go,client=['fotos','solicitud','catalogo','contacto'].includes(s);
+     go(client?'client':'workshop',s);return;
+   }
+   if(el.dataset.optionGo){
+     const map={diseno:['workshop','diseno'],planos:['workshop','planos'],fotos:['client','fotos'],solicitud:['client','solicitud'],catalogo:['client','catalogo'],jefatura:['workshop','jefatura'],materiales:['client','catalogo'],trabajador:['workshop','diseno']};
+     const dest=map[el.dataset.optionGo];if(dest){e.preventDefault();e.stopImmediatePropagation();go(dest[0],dest[1])}
+   }
+ },true);
+ document.addEventListener('DOMContentLoaded',()=>{
+   ['clientMode','workshopMode','goHome'].forEach(id=>{const el=$(id);if(el)el.setAttribute('type','button')});
+   const bossNav=document.querySelector('#sectionNav [data-go="jefatura"]');if(bossNav)bossNav.dataset.keepVisible='true';
+ });
+})();
+</script>
+
+<style id="forma3d-portal-pdf-style">
+#forma3dAccess{position:fixed;inset:0;z-index:100000;background:#21180fd9;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(7px)}
+#forma3dAccess.open{display:flex}
+#forma3dAccess .access-card{width:min(620px,100%);background:#fffaf4;color:#33261d;border:1px solid #ddc5ac;border-radius:22px;box-shadow:0 24px 90px #0005;overflow:hidden}
+#forma3dAccess .access-head{padding:24px;background:linear-gradient(125deg,#35291f,#805435);color:#fff}
+#forma3dAccess .access-head h2{margin:0 0 7px;font-size:25px}#forma3dAccess .access-head p{margin:0;color:#f3dfca;font-size:13px}
+#forma3dAccess .access-body{padding:22px;display:grid;gap:14px}
+#forma3dAccess .access-roles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#forma3dAccess .access-role{padding:16px 10px;border:1px solid #e1cdb8;background:#fff;border-radius:14px;color:#563c29;text-align:left;cursor:pointer;min-height:100px}
+#forma3dAccess .access-role strong{display:block;margin:7px 0 4px}#forma3dAccess .access-role small{font-size:11px;color:#76614f}
+#forma3dAccess .access-role.selected{border:2px solid #9a653e;background:#f7eadb}
+#forma3dAccess label{display:grid;gap:6px;font-size:12px;font-weight:800}
+#forma3dAccess input{width:100%;padding:12px;border:1px solid #d9c4ae;border-radius:10px;background:#fff}
+#forma3dAccess .access-actions{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+#forma3dAccess button{cursor:pointer}#forma3dAccess .access-actions button{padding:11px 15px;border-radius:10px;border:1px solid #d6c1ac;background:white;color:#513824;font-weight:800}
+#forma3dAccess .access-actions .primary{background:#855432;color:white;border-color:#855432}
+#forma3dAccess .access-note{padding:11px;border-radius:10px;background:#fff3d9;color:#785323;font-size:12px;line-height:1.5}
+@media(max-width:520px){#forma3dAccess .access-roles{grid-template-columns:1fr}#forma3dAccess .access-role{min-height:0}}
+@media print{body.forma3d-print-sheet #forma3dAccess{display:none!important}}
+</style>
+<script id="forma3d-portal-pdf-script">
+(()=>{
+ const $=id=>document.getElementById(id);
+ let chosenRole='orders';
+ function notify(msg){let n=$('forma3dToast');if(!n){n=document.createElement('div');n.id='forma3dToast';n.setAttribute('role','status');document.body.appendChild(n)}n.textContent=msg;n.dataset.kind='error';n.classList.add('show');setTimeout(()=>n.classList.remove('show'),5000)}
+ function value(id,fallback='No especificado'){const el=$(id);return el&&String(el.value||'').trim()?String(el.value).trim():fallback}
+ function dimensions(){return {w:value('w','0'),h:value('h','0'),d:value('d','0'),t:value('thickness','No indicado'),material:value('material'),type:value('type'),shelves:value('shelves','0'),edge:value('edge','No indicado')}}
+ function openPdfPreview(){
+   const c=$('canvas');let image='';
+   try{if(c&&c.width&&c.height)image=c.toDataURL('image/png')}catch(e){}
+   const d=dimensions(),name=value('quoteName','Diseño Forma3D'),now=new Date().toLocaleString('es-CL');
+   const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+   const imageBlock=image?'<img class="design" src="'+image+'" alt="Vista del mueble configurado">':'<div class="no-image">No se pudo capturar la vista 3D. Abre Diseño de mueble, espera a que se dibuje y vuelve a generar la ficha.</div>';
+   const w=window.open('','_blank');
+   if(!w){notify('El navegador bloqueó la vista previa. Permite ventanas emergentes para Forma3D y vuelve a pulsar Guardar PDF.');return}
+   w.document.open();w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha de diseño - '+esc(name)+'</title><style>*{box-sizing:border-box}body{margin:0;background:#e9e3dc;color:#29231e;font:14px Arial,sans-serif}.toolbar{position:sticky;top:0;background:#30251c;color:white;padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;z-index:2}.toolbar button{border:0;border-radius:8px;padding:10px 15px;font-weight:bold;cursor:pointer}.toolbar .print{background:#b47b4c;color:white}.sheet{width:min(900px,calc(100% - 32px));margin:24px auto;background:white;padding:34px;box-shadow:0 6px 25px #0002}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #9b6b43;padding-bottom:18px;gap:16px}.brand{font-size:25px;font-weight:900;color:#65452d}.sub{color:#7e6b5b;font-size:12px;margin-top:5px}.tag{border:1px solid #ddc5ac;border-radius:8px;padding:9px;color:#775033;font-size:11px;font-weight:bold}.title{margin:22px 0 5px;font-size:24px}.meta{font-size:12px;color:#7c7065}.design-wrap{margin:20px 0;border:1px solid #e2d4c5;border-radius:12px;background:linear-gradient(135deg,#fffaf3,#f0e4d6);padding:14px;min-height:260px;display:grid;place-items:center}.design{display:block;width:100%;max-height:460px;object-fit:contain}.no-image{padding:60px 24px;text-align:center;color:#7b5635}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.measure{border:1px solid #e1d3c5;border-radius:10px;padding:14px}.measure small{display:block;color:#827062;font-size:10px;text-transform:uppercase;letter-spacing:.7px}.measure strong{display:block;margin-top:6px;font-size:19px}.details{border-collapse:collapse;width:100%;margin-top:14px}.details th,.details td{text-align:left;border-bottom:1px solid #eee2d6;padding:11px}.details th{width:35%;color:#70523a;background:#fcf8f3}.notice{margin-top:18px;padding:13px;background:#fff5df;border:1px solid #efd8a4;border-radius:9px;font-size:11px;line-height:1.5}.foot{margin-top:24px;padding-top:12px;border-top:1px solid #e5d8ca;color:#8b7b6d;font-size:10px;display:flex;justify-content:space-between}@page{size:A4;margin:12mm}@media print{body{background:white}.toolbar{display:none}.sheet{width:auto;margin:0;padding:0;box-shadow:none}.design-wrap{break-inside:avoid}.grid,.details,.notice{break-inside:avoid}}@media(max-width:560px){.sheet{padding:18px}.grid{grid-template-columns:1fr}.head{flex-direction:column}.title{font-size:20px}}</style></head><body><div class="toolbar"><button onclick="window.close()">Cerrar vista previa</button><button class="print" onclick="window.print()">Guardar / imprimir PDF</button></div><main class="sheet"><div class="head"><div><div class="brand">Forma3D</div><div class="sub">DISEÑO · FABRICACIÓN · CARPINTERÍA</div></div><div class="tag">FICHA DE DISEÑO · PRELIMINAR</div></div><h1 class="title">'+esc(name)+'</h1><div class="meta">Generado el '+esc(now)+' · Unidades de medidas: milímetros</div><div class="design-wrap">'+imageBlock+'</div><h2>Medidas principales</h2><div class="grid"><div class="measure"><small>Ancho</small><strong>'+esc(d.w)+' mm</strong></div><div class="measure"><small>Alto</small><strong>'+esc(d.h)+' mm</strong></div><div class="measure"><small>Profundidad</small><strong>'+esc(d.d)+' mm</strong></div></div><h2>Especificación del diseño</h2><table class="details"><tr><th>Tipo de mueble</th><td>'+esc(d.type)+'</td></tr><tr><th>Material principal</th><td>'+esc(d.material)+'</td></tr><tr><th>Espesor de tablero</th><td>'+esc(d.t)+' mm</td></tr><tr><th>Cantidad de repisas</th><td>'+esc(d.shelves)+'</td></tr><tr><th>Canto / acabado</th><td>'+esc(d.edge)+'</td></tr></table><div class="notice"><strong>Importante:</strong> Esta ficha representa la configuración actual y es una referencia preliminar. Antes de fabricar, verifica las cotas, holguras, sentido de veta, tipo de unión, herrajes, espesor real y medidas del lugar. La imagen 3D es ilustrativa y no reemplaza el plano técnico validado.</div><div class="foot"><span>Forma3D · Ficha de proyecto</span><span>Documento preliminar · '+esc(now)+'</span></div></main></body></html>');
+   w.document.close();
+ }
+ function installAccess(){
+   if(!$('forma3dAccess')){
+     const modal=document.createElement('div');modal.id='forma3dAccess';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-labelledby','forma3dAccessTitle');
+     modal.innerHTML='<div class="access-card"><div class="access-head"><h2 id="forma3dAccessTitle">Acceso a Forma3D</h2><p>Entra como cliente o selecciona tu área de trabajo.</p></div><div class="access-body"><div class="access-roles"><button class="access-role" type="button" data-role="guest"><span>🪑</span><strong>Cliente</strong><small>Solicitar sin crear cuenta</small></button><button class="access-role" type="button" data-role="orders"><span>📦</span><strong>Administración</strong><small>Pedidos, clientes y producción</small></button><button class="access-role" type="button" data-role="support"><span>🛟</span><strong>Soporte</strong><small>Ayuda e incidencias técnicas</small></button></div><div id="staffLoginFields" style="display:none;gap:12px"><label>Correo corporativo<input id="forma3dStaffEmail" type="email" autocomplete="username" placeholder="nombre@empresa.cl"></label><label>Contraseña<input id="forma3dStaffPassword" type="password" autocomplete="current-password" placeholder="Contraseña de tu cuenta"></label><div class="access-note" id="staffAuthNote">El acceso interno debe validarse con autenticación segura del servidor. Esta interfaz no guarda ni valida contraseñas.</div></div><div class="access-actions"><button type="button" id="forma3dAccessClose">Cancelar</button><button type="button" class="primary" id="forma3dAccessContinue">Continuar como cliente</button></div></div></div>';
+     document.body.appendChild(modal);
+     modal.querySelectorAll('[data-role]').forEach(btn=>btn.addEventListener('click',()=>{chosenRole=btn.dataset.role;modal.querySelectorAll('[data-role]').forEach(x=>x.classList.toggle('selected',x===btn));const staff=chosenRole!=='guest';$('staffLoginFields').style.display=staff?'grid':'none';$('forma3dAccessContinue').textContent=chosenRole==='guest'?'Continuar como cliente':chosenRole==='support'?'Entrar a soporte':'Entrar a administración';}));
+     $('forma3dAccessClose').addEventListener('click',()=>modal.classList.remove('open'));
+     modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open')});
+     $('forma3dAccessContinue').addEventListener('click',()=>{
+       if(chosenRole==='guest'){modal.classList.remove('open');if(typeof window.setMode==='function')window.setMode('client');if(typeof window.goSection==='function')window.goSection('solicitud');return}
+       $('staffAuthNote').textContent='El formulario visual está preparado, pero el inicio de sesión seguro aún debe conectarse al servidor de autenticación. No se habilitó el acceso usando una clave local insegura.';
+       notify('El acceso de '+(chosenRole==='support'?'soporte':'administración')+' requiere conectar la autenticación segura. No se ha iniciado sesión.');
+     });
+   }
+ }
+ function addEntryButtons(){
+   const actions=document.querySelector('.hero-actions');
+   if(actions&&!$('forma3dAccessOpen')){const b=document.createElement('button');b.id='forma3dAccessOpen';b.type='button';b.textContent='Acceso interno';actions.appendChild(b);b.addEventListener('click',()=>{$('forma3dAccess').classList.add('open');chosenRole='orders';$('forma3dAccess').querySelectorAll('[data-role]').forEach(x=>x.classList.toggle('selected',x.dataset.role===chosenRole));$('staffLoginFields').style.display='grid';$('forma3dAccessContinue').textContent='Entrar a administración';});}
+   const head=document.querySelector('.forma-topbar .header-actions');if(head&&!$('forma3dAccessTop')){const b=document.createElement('button');b.id='forma3dAccessTop';b.type='button';b.textContent='Acceso interno';head.insertBefore(b,$('pdf'));b.addEventListener('click',()=>{$('forma3dAccess').classList.add('open')})}
+ }
+ document.addEventListener('DOMContentLoaded',()=>{installAccess();addEntryButtons();});
+ document.addEventListener('click',e=>{
+   const b=e.target instanceof Element?e.target.closest('#pdf,#forma3dAccessOpen,#forma3dAccessTop'):null;if(!b)return;
+   if(b.id==='pdf'){e.preventDefault();e.stopImmediatePropagation();openPdfPreview()}
+ },true);
+})();
+</script>
+
+<style id="forma3d-real-furniture-gallery-style">
+#forma3dRealGallery{margin:18px 0 24px}
+#forma3dRealGallery .real-gallery-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+#forma3dRealGallery h3{margin:0 0 5px;font-size:20px;color:#3a2b20}
+#forma3dRealGallery p{margin:0;color:#806b58;font-size:12px;line-height:1.5}
+#forma3dRealGallery .real-gallery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+#forma3dRealGallery .real-furniture-card{overflow:hidden;border:1px solid #dfc9b4;border-radius:15px;background:#fffaf4;box-shadow:0 5px 16px #5a3a1a0b;display:flex;flex-direction:column;min-width:0}
+#forma3dRealGallery .real-furniture-card .real-photo{width:100%;height:175px;object-fit:cover;background:linear-gradient(135deg,#e8d6c1,#a87b54);display:block}
+#forma3dRealGallery .real-furniture-card .real-copy{padding:12px;display:grid;gap:7px;flex:1}
+#forma3dRealGallery .real-furniture-card strong{font-size:14px;color:#392b21}
+#forma3dRealGallery .real-furniture-card small{font-size:11px;color:#806d5c;line-height:1.45}
+#forma3dRealGallery .real-furniture-card button{border:1px solid #b88961;background:#8b5b37;color:white;border-radius:9px;padding:10px;font-weight:800;cursor:pointer;margin-top:auto}
+#forma3dRealGallery .real-gallery-note{margin-top:12px;padding:11px 13px;background:#f5e9d9;border-radius:10px;font-size:11px;color:#70563e}
+@media(max-width:850px){#forma3dRealGallery .real-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){#forma3dRealGallery .real-gallery-grid{grid-template-columns:1fr}#forma3dRealGallery .real-furniture-card .real-photo{height:210px}}
+</style>
+<script id="forma3d-real-furniture-gallery-script">
+(()=>{
+const models=[
+ {name:'Escritorio en L',type:'escritorio',w:1600,h:750,d:600,material:'Roble natural y grafito',image:'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=85',desc:'Superficie amplia para oficina, con almacenamiento y acabado madera.'},
+ {name:'Closet contemporáneo',type:'closet',w:2400,h:2200,d:600,material:'Melamina roble natural',image:'https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=900&q=85',desc:'Inspiración para un closet de altura completa con puertas y organización interior.'},
+ {name:'Mueble para TV',type:'estante',w:1800,h:500,d:400,material:'Roble y grafito',image:'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=900&q=85',desc:'Mueble bajo para living, equipos multimedia y decoración.'},
+ {name:'Biblioteca modular',type:'estante',w:1200,h:2000,d:300,material:'Roble natural',image:'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=85',desc:'Estantería abierta para libros, objetos y almacenamiento.'},
+ {name:'Cocina moderna',type:'estante',w:2400,h:2200,d:600,material:'Madera y melamina clara',image:'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=900&q=85',desc:'Referencia de muebles de cocina, frentes limpios y tonos naturales.'},
+ {name:'Escritorio compacto',type:'escritorio',w:1200,h:750,d:550,material:'Madera natural',image:'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=900&q=85',desc:'Estación de trabajo compacta para dormitorio o espacio pequeño.'}
+];
+function showToast(msg){let n=document.getElementById('forma3dToast');if(!n){n=document.createElement('div');n.id='forma3dToast';n.setAttribute('role','status');document.body.appendChild(n)}n.textContent=msg;n.dataset.kind='success';n.classList.add('show');setTimeout(()=>n.classList.remove('show'),3500)}
+function init(){
+const panel=document.getElementById('catalogPanel');if(!panel||document.getElementById('forma3dRealGallery'))return;
+const gallery=document.createElement('section');gallery.id='forma3dRealGallery';
+gallery.innerHTML='<div class="real-gallery-head"><div><h3>Inspiración de muebles realistas</h3><p>Referencias visuales para definir estilo, materiales y proporciones.</p></div><span class="badge">DISEÑOS DE REFERENCIA</span></div><div class="real-gallery-grid"></div><div class="real-gallery-note">Las fotografías son referencias de estilo. Al seleccionar un modelo se cargan dimensiones iniciales en el configurador; el mueble editable y el despiece deben revisarse antes de fabricar.</div>';
+const grid=gallery.querySelector('.real-gallery-grid');
+models.forEach((m,i)=>{
+const card=document.createElement('article');card.className='real-furniture-card';
+const img=document.createElement('img');img.className='real-photo';img.src=m.image;img.alt=m.name;img.loading='lazy';img.referrerPolicy='no-referrer';img.onerror=()=>{img.style.display='none';card.querySelector('.real-copy').style.background='linear-gradient(135deg,#f0dfcb,#d1b08b)'};
+const copy=document.createElement('div');copy.className='real-copy';
+const title=document.createElement('strong');title.textContent=m.name;
+const desc=document.createElement('small');desc.textContent=m.desc;
+const btn=document.createElement('button');btn.type='button';btn.textContent='Usar como base';btn.addEventListener('click',()=>{
+const set=(id,v)=>{const el=document.getElementById(id);if(el){el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))}};
+set('type',m.type);set('w',m.w);set('h',m.h);set('d',m.d);
+const titleField=document.getElementById('title')||document.getElementById('quoteName');if(titleField){titleField.value=m.name;titleField.dispatchEvent(new Event('input',{bubbles:true}))}
+const mat=document.getElementById('material');if(mat){const option=[...mat.options].find(o=>/roble|madera|melamina/i.test(o.text));if(option)mat.value=option.value}
+if(typeof window.goSection==='function')window.goSection('diseno');
+if(typeof window.setMode==='function')window.setMode('workshop');
+showToast('Se cargaron medidas iniciales para '+m.name+'. Ajusta el modelo y verifica todas las cotas.');
+});
+copy.append(title,desc,btn);card.append(img,copy);grid.appendChild(card);
+});
+const pb=panel.querySelector('.pb');if(pb)pb.insertBefore(gallery,pb.firstChild);else panel.appendChild(gallery);
+}
+document.addEventListener('DOMContentLoaded',init);
+const obs=new MutationObserver(init);obs.observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
+
 </body>
 </html>
