@@ -1047,5 +1047,51 @@ body.started #sectionNav.app-nav{position:fixed!important;inset:0 auto 0 0!impor
 })();
 </script>
 
+<style id="forma3d-navigation-emergency-fix">
+#sectionNav.app-nav{z-index:5000!important;pointer-events:auto!important}
+#sectionNav.app-nav button,#sectionNav.app-nav .mode-switch{position:relative;z-index:5001;pointer-events:auto!important}
+.forma-topbar,.forma-topbar button{position:relative;z-index:5002}
+#sectionNav .mode-switch button{width:100%;min-height:42px;touch-action:manipulation}
+</style>
+<script id="forma3d-navigation-emergency-fix-script">
+(()=>{
+ const $=id=>document.getElementById(id);
+ function go(mode,section){
+   try{
+     if(typeof window.setMode==='function')window.setMode(mode);
+     if(typeof window.goSection==='function')window.goSection(section);
+     document.body.dataset.mode=mode;
+     const client=mode==='client';
+     const cm=$('clientMode'),wm=$('workshopMode');
+     if(cm){cm.classList.toggle('active',client);cm.setAttribute('aria-pressed',String(client))}
+     if(wm){wm.classList.toggle('active',!client);wm.setAttribute('aria-pressed',String(!client))}
+     const sm=$('sessionMode'),ss=$('sidebarSessionMode');
+     const label=client?'🪑 Modo cliente':'🛠️ Modo taller';
+     if(sm)sm.textContent=label;if(ss)ss.textContent=label;
+   }catch(err){console.error('Forma3D navegación:',err);alert('No se pudo abrir la sección. Recarga la página e inténtalo nuevamente.')}
+ }
+ document.addEventListener('click',e=>{
+   const el=e.target instanceof Element?e.target.closest('button,[data-option-go]'):null;
+   if(!el)return;
+   if(el.id==='goHome'){e.preventDefault();e.stopImmediatePropagation();if(typeof window.goSection==='function')window.goSection('inicio');return}
+   if(el.id==='clientMode'){e.preventDefault();e.stopImmediatePropagation();go('client','solicitud');return}
+   if(el.id==='workshopMode'){e.preventDefault();e.stopImmediatePropagation();go('workshop','diseno');return}
+   if(el.dataset.go){
+     e.preventDefault();e.stopImmediatePropagation();
+     const s=el.dataset.go,client=['fotos','solicitud','catalogo','contacto'].includes(s);
+     go(client?'client':'workshop',s);return;
+   }
+   if(el.dataset.optionGo){
+     const map={diseno:['workshop','diseno'],planos:['workshop','planos'],fotos:['client','fotos'],solicitud:['client','solicitud'],catalogo:['client','catalogo'],jefatura:['workshop','jefatura'],materiales:['client','catalogo'],trabajador:['workshop','diseno']};
+     const dest=map[el.dataset.optionGo];if(dest){e.preventDefault();e.stopImmediatePropagation();go(dest[0],dest[1])}
+   }
+ },true);
+ document.addEventListener('DOMContentLoaded',()=>{
+   ['clientMode','workshopMode','goHome'].forEach(id=>{const el=$(id);if(el)el.setAttribute('type','button')});
+   const bossNav=document.querySelector('#sectionNav [data-go="jefatura"]');if(bossNav)bossNav.dataset.keepVisible='true';
+ });
+})();
+</script>
+
 </body>
 </html>
