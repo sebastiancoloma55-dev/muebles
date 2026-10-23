@@ -1159,5 +1159,61 @@ body.started #sectionNav.app-nav{position:fixed!important;inset:0 auto 0 0!impor
 })();
 </script>
 
+<style id="forma3d-real-furniture-gallery-style">
+#forma3dRealGallery{margin:18px 0 24px}
+#forma3dRealGallery .real-gallery-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+#forma3dRealGallery h3{margin:0 0 5px;font-size:20px;color:#3a2b20}
+#forma3dRealGallery p{margin:0;color:#806b58;font-size:12px;line-height:1.5}
+#forma3dRealGallery .real-gallery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+#forma3dRealGallery .real-furniture-card{overflow:hidden;border:1px solid #dfc9b4;border-radius:15px;background:#fffaf4;box-shadow:0 5px 16px #5a3a1a0b;display:flex;flex-direction:column;min-width:0}
+#forma3dRealGallery .real-furniture-card .real-photo{width:100%;height:175px;object-fit:cover;background:linear-gradient(135deg,#e8d6c1,#a87b54);display:block}
+#forma3dRealGallery .real-furniture-card .real-copy{padding:12px;display:grid;gap:7px;flex:1}
+#forma3dRealGallery .real-furniture-card strong{font-size:14px;color:#392b21}
+#forma3dRealGallery .real-furniture-card small{font-size:11px;color:#806d5c;line-height:1.45}
+#forma3dRealGallery .real-furniture-card button{border:1px solid #b88961;background:#8b5b37;color:white;border-radius:9px;padding:10px;font-weight:800;cursor:pointer;margin-top:auto}
+#forma3dRealGallery .real-gallery-note{margin-top:12px;padding:11px 13px;background:#f5e9d9;border-radius:10px;font-size:11px;color:#70563e}
+@media(max-width:850px){#forma3dRealGallery .real-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){#forma3dRealGallery .real-gallery-grid{grid-template-columns:1fr}#forma3dRealGallery .real-furniture-card .real-photo{height:210px}}
+</style>
+<script id="forma3d-real-furniture-gallery-script">
+(()=>{
+const models=[
+ {name:'Escritorio en L',type:'escritorio',w:1600,h:750,d:600,material:'Roble natural y grafito',image:'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=85',desc:'Superficie amplia para oficina, con almacenamiento y acabado madera.'},
+ {name:'Closet contemporáneo',type:'closet',w:2400,h:2200,d:600,material:'Melamina roble natural',image:'https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=900&q=85',desc:'Inspiración para un closet de altura completa con puertas y organización interior.'},
+ {name:'Mueble para TV',type:'estante',w:1800,h:500,d:400,material:'Roble y grafito',image:'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=900&q=85',desc:'Mueble bajo para living, equipos multimedia y decoración.'},
+ {name:'Biblioteca modular',type:'estante',w:1200,h:2000,d:300,material:'Roble natural',image:'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=85',desc:'Estantería abierta para libros, objetos y almacenamiento.'},
+ {name:'Cocina moderna',type:'estante',w:2400,h:2200,d:600,material:'Madera y melamina clara',image:'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=900&q=85',desc:'Referencia de muebles de cocina, frentes limpios y tonos naturales.'},
+ {name:'Escritorio compacto',type:'escritorio',w:1200,h:750,d:550,material:'Madera natural',image:'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=900&q=85',desc:'Estación de trabajo compacta para dormitorio o espacio pequeño.'}
+];
+function showToast(msg){let n=document.getElementById('forma3dToast');if(!n){n=document.createElement('div');n.id='forma3dToast';n.setAttribute('role','status');document.body.appendChild(n)}n.textContent=msg;n.dataset.kind='success';n.classList.add('show');setTimeout(()=>n.classList.remove('show'),3500)}
+function init(){
+const panel=document.getElementById('catalogPanel');if(!panel||document.getElementById('forma3dRealGallery'))return;
+const gallery=document.createElement('section');gallery.id='forma3dRealGallery';
+gallery.innerHTML='<div class="real-gallery-head"><div><h3>Inspiración de muebles realistas</h3><p>Referencias visuales para definir estilo, materiales y proporciones.</p></div><span class="badge">DISEÑOS DE REFERENCIA</span></div><div class="real-gallery-grid"></div><div class="real-gallery-note">Las fotografías son referencias de estilo. Al seleccionar un modelo se cargan dimensiones iniciales en el configurador; el mueble editable y el despiece deben revisarse antes de fabricar.</div>';
+const grid=gallery.querySelector('.real-gallery-grid');
+models.forEach((m,i)=>{
+const card=document.createElement('article');card.className='real-furniture-card';
+const img=document.createElement('img');img.className='real-photo';img.src=m.image;img.alt=m.name;img.loading='lazy';img.referrerPolicy='no-referrer';img.onerror=()=>{img.style.display='none';card.querySelector('.real-copy').style.background='linear-gradient(135deg,#f0dfcb,#d1b08b)'};
+const copy=document.createElement('div');copy.className='real-copy';
+const title=document.createElement('strong');title.textContent=m.name;
+const desc=document.createElement('small');desc.textContent=m.desc;
+const btn=document.createElement('button');btn.type='button';btn.textContent='Usar como base';btn.addEventListener('click',()=>{
+const set=(id,v)=>{const el=document.getElementById(id);if(el){el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))}};
+set('type',m.type);set('w',m.w);set('h',m.h);set('d',m.d);
+const titleField=document.getElementById('title')||document.getElementById('quoteName');if(titleField){titleField.value=m.name;titleField.dispatchEvent(new Event('input',{bubbles:true}))}
+const mat=document.getElementById('material');if(mat){const option=[...mat.options].find(o=>/roble|madera|melamina/i.test(o.text));if(option)mat.value=option.value}
+if(typeof window.goSection==='function')window.goSection('diseno');
+if(typeof window.setMode==='function')window.setMode('workshop');
+showToast('Se cargaron medidas iniciales para '+m.name+'. Ajusta el modelo y verifica todas las cotas.');
+});
+copy.append(title,desc,btn);card.append(img,copy);grid.appendChild(card);
+});
+const pb=panel.querySelector('.pb');if(pb)pb.insertBefore(gallery,pb.firstChild);else panel.appendChild(gallery);
+}
+document.addEventListener('DOMContentLoaded',init);
+const obs=new MutationObserver(init);obs.observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
+
 </body>
 </html>
